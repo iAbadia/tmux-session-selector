@@ -5,6 +5,8 @@ import readline
 import sys
 import os
 
+from simple_term_menu import TerminalMenu
+
 
 class TmuxSessions(object):
 
@@ -31,14 +33,12 @@ class TmuxSessions(object):
         names = []
 
         try:
-            #use explicit path to force use of v1.7
-            raw_sessions = subprocess.check_output(['tmux', 'list-sessions'],
-                                                   stderr=subprocess.PIPE)
+            raw_sessions = subprocess.getoutput("tmux ls | cut -d':' -f 1")
         except subprocess.CalledProcessError:
             # tmux returns 1 if there are no sessions
             pass
         else:
-            sessions = raw_sessions.split('\n')
+            sessions = str(raw_sessions).split('\n')
             sessions = filter(bool, sessions)
 
             for session in sessions:
@@ -68,6 +68,9 @@ class TmuxSessions(object):
     def __iter__(self):
         return self._sessions.__iter__()
 
+    def list(self):
+        return self._sessions;
+
 
 if __name__ == '__main__':
 
@@ -76,19 +79,12 @@ if __name__ == '__main__':
     readline.parse_and_bind('tab: complete')
     readline.set_completer(sessions.complete)
 
+    session=""
     if sessions:
-        print("Please select one of the existing sessions to attach to\n" \
-              "or enter a name for a new session:")
-        for session in sessions:
-            print("\t{}".format(session))
+        list_sessions = sessions.list()
+        terminal_menu = TerminalMenu(list_sessions)
+        menu_entry_index = terminal_menu.show()
+        session=list_sessions[menu_entry_index]
+        sessions.connect(session)
     else:
-        print("Currently, there are no sessions.\n" \
-              "Please enter a name for a new session")
-
-    try:
-        session = raw_input('session: ')
-    except (KeyboardInterrupt, EOFError):
-        sys.exit()
-
-    sessions.connect(session)
-
+        print("No sessions available.")
